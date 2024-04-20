@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import time
 import os
-import json
+
 from torchvision import transforms, datasets
 import torch
 from torchvision import datasets, transforms
@@ -13,36 +13,8 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 from VAE import VAE
 from data_loader import generate_data_loaders
+from utility import resolve_device, read_configs
 
-
-def read_configs():
-    # Specify the path to your JSON file
-    json_file_path = './config.json'
-
-    # Read the JSON file into a dictionary
-    with open(json_file_path, 'r') as file:
-        data = json.load(file)
-        
-    return data
-
-
-def resolve_device():
-    # Check for CUDA and MPS availability
-    use_cuda = torch.cuda.is_available()
-    use_mps = torch.backends.mps.is_available()
-
-    # Set the device based on availability
-    if use_cuda:
-        device = torch.device("cuda")
-    elif use_mps:
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
-
-    # Print the selected device
-    print(f"Using device: {device}")
-    
-    return device
 
 
 if __name__ == '__main__':
@@ -56,7 +28,7 @@ if __name__ == '__main__':
     config = read_configs()
     batch_size = 32
     # Get datases
-    train_loader, test_loader = generate_data_loaders(config['data_path'], batch_size)
+    train_loader, test_loader = generate_data_loaders(config['data_path_abs'], batch_size)
     
     ################################################################################
     ##############################  TRAINING  ######################################

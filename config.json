@@ -1,3 +1,6 @@
 {
-    "data_path": "/Users/platonslynko/Desktop/CS583/FaceGen/img_align_celeba"
+    "data_path_abs": "/Users/platonslynko/Desktop/CS583/img_align_celeba",
+    "latent_faces_data_path_abs": "/Users/platonslynko/Desktop/CS583/latent_faces_data",
+    "model_dir_rel": "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/models",
+    "face_attributes_rel": "data/list_attr_celeba.txt"
 }

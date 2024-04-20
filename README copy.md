@@ -1,1 +1,0 @@
-# CIS-583 FaceGen Project
