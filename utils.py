@@ -17,7 +17,7 @@ def read_configs():
     return data
 
 def get_model_path_by_name(model_name):
-    return os.path.join(read_configs()['model_dir'], model_name)
+    return os.path.join(read_configs()['model_dir_rel'], model_name)
 
 
 def resolve_device():
