@@ -1,6 +1,8 @@
 import torch
 import json
 import os
+import time
+import sys
 
 
 def get_project_dir():
@@ -45,3 +47,22 @@ def check_mps():
         print (x)
     else:
         print ("MPS device not found.")
+
+# method to print progress and estimate remaining time        
+def print_progress_with_time(idx, total_imgs, start_time, interval):
+    if idx % interval != 0 and idx != total_imgs - 1:
+        return  # Skip printing if not at an interval or the last iteration
+
+    current_time = time.time()
+    elapsed_time = current_time - start_time
+    avg_time_per_img = elapsed_time / (idx + 1)
+    remaining_imgs = total_imgs - (idx + 1)
+    remaining_time = remaining_imgs * avg_time_per_img / 60
+    
+    progress = (idx + 1) / total_imgs
+    bar_length = 50
+    filled_length = int(bar_length * progress)
+    bar = '=' * filled_length + '-' * (bar_length - filled_length)
+    
+    sys.stdout.write(f'\rProgress: [{bar}] {progress*100:.2f}%  Time remaining: {remaining_time:.2f} mins')
+    sys.stdout.flush()

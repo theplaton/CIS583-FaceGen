@@ -4,6 +4,7 @@ from PIL import Image
 import os
 from torch.utils.data import Dataset
 import torch
+import linecache
 
 
 def divide_by_256(x):
@@ -17,18 +18,10 @@ transform = transforms.Compose([
 
 
 class ImageDataset(Dataset):
-    def __init__(self, root_dir, transform, idx_list=None):
+    def __init__(self, root_dir, transform):
         self.root_dir = root_dir
         self.transform = transform
-        # self.image_files = [f for f in os.listdir(root_dir) if f.endswith('.jpg')]
         self.image_files = sorted([f for f in os.listdir(root_dir) if f.endswith('.jpg')])
-        # if idx_list:
-        #     # Convert IDs to strings with leading zeros
-        #     id_strings = [str(id).zfill(6) for id in idx_list]
-        #     # Filter image files by IDs
-        #     filtered_image_files = [f for f in self.image_files if any(f.startswith(id_str) for id_str in id_strings)]
-        #     self.image_files = filtered_image_files
-
 
     def __len__(self):
         return len(self.image_files)
@@ -56,24 +49,49 @@ class ImageDataset(Dataset):
 
 
 class LatentFacesWithCategories(Dataset):
-    def __init__(self, data):
+    def __init__(self, latent_img_dir, category_attr_path, mu_scale=-100):
         """
         Args:
             data (list of tuples): Each tuple contains two elements:
                 - An array or tensor of shape [lat_img_dim]
                 - A category vector or tensor of shape [category_dim]
         """
-        self.data = data
+        self.image_dir = latent_img_dir
+        self.category_attr_file = category_attr_path
+        self.data_files = sorted([f for f in os.listdir(self.image_dir) if f.endswith('.dat')])
+        self.mu_scale = mu_scale
+        # self.categories = self.read_category_attributes(category_attr_path)
+        
+    # def read_category_attributes(self, path):
+    #     with open(path, 'r') as file:
+    #         lines = file.readlines()
+    #     lines = lines[2:]
+
+    #     image_paths = []
+    #     data = []
+
+    #     for line in lines:
+    #         parts = line.split()
+    #         image_paths.append(parts[0])  # first column is the image file name
+    #         data.append(torch.tensor([int(x) for x in parts[1:]]).unsqueeze(0))  # Convert the rest of the columns to integers
+
+    #     return data
+    
+    def read_category_attribute(self, idx):
+        line = linecache.getline(self.category_attr_file, idx + 3) # +3 to skip column names
+        parts = line.split()
+        return torch.tensor([int(x) for x in parts[1:]]) # Convert the rest of the columns to integers
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data_files)
 
     def __getitem__(self, idx):
-        main_vector, category_vector = self.data[idx]
-        return torch.tensor(main_vector, dtype=torch.float32), torch.tensor(category_vector, dtype=torch.float32)
+        loaded_data = torch.load(os.path.join(self.image_dir, self.data_files[idx]))
+        mu, logvar = loaded_data['tensor1'].squeeze(0) * self.mu_scale, loaded_data['tensor2'].squeeze(0)
+        data = torch.cat((mu, logvar), dim=0)
+        category_vector = self.read_category_attribute(idx)
+        return data, category_vector
     
-    
-
 
 def generate_training_data_loaders(path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
     # Create the dataset
@@ -91,7 +109,28 @@ def generate_training_data_loaders(path, batch_size, split_ratio=0.8, num_worker
     return train_loader, test_loader
 
 
-def generate_full_data_loader(path, num_workers=8):
+def generate_full_data_loader(path, num_workers=2):
     dataset = ImageDataset(path, transform)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
     return data_loader
+
+
+def generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
+    # Create the dataset
+    dataset = LatentFacesWithCategories(lat_img_path, category_attr_path)
+
+    # # Split the dataset into train and test sets
+    # train_size = int(split_ratio * len(dataset))
+    # test_size = len(dataset) - train_size
+    # train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+    # # Create DataLoaders for training and testing with multiple workers
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    
+    # return train_loader, test_loader
+
+    # train_loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
+    train_loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True)
+
+    return train_loader

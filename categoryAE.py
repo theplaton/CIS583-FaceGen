@@ -1,17 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import os
-from torchvision import transforms, datasets
-from torch.utils.data import DataLoader
-
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from data_loader import generate_training_categoryAE_data_loaders
 
 
 class CategoryAutoencoder(nn.Module):
-    def __init__(self, input_dim=128, latent_dim=40):
+    def __init__(self, input_dim=512, latent_dim=40):
         super(CategoryAutoencoder, self).__init__()
         self.encoder = nn.Linear(input_dim, latent_dim)
         self.decoder = nn.Linear(latent_dim, input_dim)
@@ -36,22 +30,28 @@ class AutoencoderLoss(nn.Module):
         return total_loss
 
 
-autoencoder = CategoryAutoencoder()
-loss_function = AutoencoderLoss(lambda_value=0.5)
-optimizer = torch.optim.Adam(autoencoder.parameters(), lr=0.001)
-
-
 def train_autoencoder(model, dataloader, loss_function, optimizer, epochs):
     model.train()
     for epoch in range(epochs):
         for data in dataloader:
-            main_vector, category_vector = data
+            face_vector, category_vector = data
             optimizer.zero_grad()
-            outputs, latents = model(main_vector)
-            loss = loss_function(main_vector, outputs, latents, category_vector)
+            outputs, latents = model(face_vector)
+            loss = loss_function(face_vector, outputs, latents, category_vector)
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
 
-# Training the model
-train_autoencoder(autoencoder, dataloader, loss_function, optimizer, epochs=20)
+
+if __name__ == "__main__":
+    
+    lat_img_path = "/Users/platonslynko/Desktop/CS583/latent_faces_data"
+    category_attr_path = "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/data/list_attr_celeba.txt"
+    
+    autoencoder = CategoryAutoencoder()
+    loss_function = AutoencoderLoss(lambda_value=0.5)
+    optimizer = torch.optim.Adam(autoencoder.parameters(), lr=0.001)
+    data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, 1, num_workers=1)
+    
+    # Training the model
+    train_autoencoder(autoencoder, data_loader, loss_function, optimizer, epochs=20)
