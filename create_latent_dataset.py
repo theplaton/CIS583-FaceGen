@@ -28,8 +28,7 @@ if __name__ == "__main__":
     model.eval()
 
     original_dataset = read_configs()['data_path_abs']
-    # new_latent_faces_dataset = read_configs()['latent_faces_data_path_abs']
-    new_latent_faces_dataset = "/Users/platonslynko/Desktop/CS583/latentfaces2"
+    new_latent_faces_dataset = read_configs()['latent_faces_data_path_abs']
 
     data_loader = generate_full_data_loader(original_dataset)
     total_imgs = len(data_loader)
@@ -43,5 +42,5 @@ if __name__ == "__main__":
             'logvar': logvar
         }
         filename = f'{idx+1:06}.dat'
-        torch.save(data_to_write, os.path.join(new_latent_faces_dataset, filename))
+        torch.save(data_to_write, os.path.join(new_latent_faces_dataset, filename).replace("\\","/"))
         print_progress_with_time(idx, total_imgs, start_time, 100)
