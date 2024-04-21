@@ -91,7 +91,7 @@ class FacesAndAttributes(Dataset):
 
     def __getitem__(self, idx):
         
-        img_path = os.path.join(self.root_dir, self.image_files[idx])
+        img_path = os.path.join(self.image_dir, self.image_files[idx])
         image = Image.open(img_path).convert('RGB')
 
         # Get the dimensions of the image
@@ -168,7 +168,15 @@ def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batc
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
     # Create DataLoaders for training and testing with multiple workers
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
-    
+    train_loader = DataLoader(train_dataset, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size)
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+
     return train_loader, test_loader
+
+
+# data = data.to('cpu').pin_memory()
+
+# # Move the tensor to the target device
+# data = data.to(device, non_blocking=True)

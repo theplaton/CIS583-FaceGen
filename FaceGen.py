@@ -5,11 +5,14 @@ import os
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
 import sys
-from data_loaders import generate_training_img_and_attrs_data_loaders, resolve_config
+from data_loaders import generate_training_img_and_attrs_data_loaders
+from utils import resolve_config
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import time
+import datetime
+from utils import resolve_device, resolve_config, print_training_progress_with_time
 
 
 
@@ -81,8 +84,21 @@ class VAE(nn.Module):
         return self.decoder(z), mu, logvar
 
 
+class AutoencoderLoss(nn.Module):
+    def __init__(self, lambda_value=0.5):
+        super(AutoencoderLoss, self).__init__()
+        self.lambda_value = lambda_value
+        self.reconstruction_loss = nn.MSELoss()
+        self.latent_matching_loss = nn.MSELoss()  # Assuming continuous categories
 
-def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, device, model_safe_path):
+    def forward(self, inputs, reconstructions, latents, categories):
+        rec_loss = self.reconstruction_loss(reconstructions, inputs)
+        match_loss = self.latent_matching_loss(latents, categories)
+        total_loss = rec_loss + self.lambda_value * match_loss
+        return total_loss
+
+
+def train(model, dataloader, loss_function, optimizer, epochs, device, model_safe_path):
     model.to(device)
     model.train()
     data_size = len(dataloader)
@@ -111,11 +127,15 @@ def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, devic
     torch.save(model, f'{model_safe_path}_{day}_{hr}-{min}')
 
 
-
 if __name__ == "__main__":
-    img_data = resolve_config['data_path_abs']
-    attr_data = resolve_config['face_attributes_rel']
+    img_data = resolve_config('data_path_abs')
+    attr_data = resolve_config('face_attributes_rel')
+    model_safe_path = os.path.join("./models", "face_gen")
+    
+    autoencoder = VAE()
+    loss_function = AutoencoderLoss(lambda_value=0.5)
+    optimizer = torch.optim.Adam(autoencoder.parameters(), lr=0.001)
     
     train_loader, test_loader = generate_training_img_and_attrs_data_loaders(img_data, attr_data, 1)
-    
+    train(autoencoder, train_loader, loss_function, optimizer, epochs=10, device=resolve_device(), model_safe_path=model_safe_path)
     
