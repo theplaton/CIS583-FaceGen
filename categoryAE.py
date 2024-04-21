@@ -33,7 +33,7 @@ class AutoencoderLoss(nn.Module):
         return total_loss
 
 
-def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, device, model_safe_path):
+def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, device, model_save_path):
     model.to(device)
     model.train()
     data_size = len(dataloader)
@@ -51,7 +51,7 @@ def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, devic
                 optimizer.step()
                 print_training_progress_with_time(idx, epoch, data_size, epochs, start_time, 100)
             print("\n")
-            print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
+            print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}", end = "\r")
     except KeyboardInterrupt:
         print("was interrupted!")
     
@@ -59,20 +59,20 @@ def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, devic
     day = now.strftime("%d")
     hr = now.strftime("%H")
     min = now.strftime("%M")
-    torch.save(model, f'{model_safe_path}_{day}_{hr}-{min}')
+    torch.save(model, f'{model_save_path}_{day}_{hr}-{min}')
 
 
 if __name__ == "__main__":
     
     # lat_img_path = "/Users/platonslynko/Desktop/CS583/latent_faces_data"
-    lat_img_path = read_configs()['']
-    category_attr_path = "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/data/list_attr_celeba.txt"
-    model_safe_path = "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/models/category_ae"
+    lat_img_path = read_configs()['latent_faces_data_path_abs']
+    category_attr_path = read_configs()['face_attributes_rel']
+    model_save_path = "./models/category_ae"
     
     autoencoder = CategoryAutoencoder()
     loss_function = AutoencoderLoss(lambda_value=0.5)
     optimizer = torch.optim.Adam(autoencoder.parameters(), lr=0.001)
-    data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, 1, num_workers=1)
+    train_data_loader, test_data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, batch_size = 32, num_workers=8)
     
     # Training the model
-    train_autoencoder(autoencoder, data_loader, loss_function, optimizer, epochs=20, device=resolve_device(), model_safe_path=model_safe_path)
+    train_autoencoder(autoencoder, train_data_loader, loss_function, optimizer, epochs=20, device=resolve_device(), model_save_path=model_save_path)

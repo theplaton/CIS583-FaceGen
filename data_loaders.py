@@ -65,21 +65,20 @@ class LatentFacesWithCategories(Dataset):
         return len(self.data_files)
 
     def __getitem__(self, idx):
-        loaded_data = torch.load(os.path.join(self.image_dir, self.data_files[idx]))
-        mu, logvar = loaded_data['tensor1'].squeeze(0) * self.mu_scale, loaded_data['tensor2'].squeeze(0)
-        data = torch.cat((mu, logvar), dim=0)
+        loaded_data = torch.load(os.path.join(self.image_dir, self.data_files[idx]), map_location='cpu')
+        mu, logvar = loaded_data['mu'].squeeze(0) * self.mu_scale, loaded_data['logvar'].squeeze(0)
+        data = torch.cat((mu, logvar), dim=0).detach()
         category_vector = self.read_category_attribute(idx)
-        category_vector.to("mps")
         return data, category_vector
     
     
 class FacesAndAttributes(Dataset):
-    def __init__(self, img_dir, category_attr_path, transform, device):
+    def __init__(self, img_dir, category_attr_path, transform):
         self.image_dir = img_dir
         self.category_attr_file = category_attr_path
         self.image_files = sorted([f for f in os.listdir(self.image_dir) if f.endswith('.jpg')])
         self.transform = transform
-        self.device = device
+        #self.device = device
     
     def read_category_attribute(self, idx):
         line = linecache.getline(self.category_attr_file, idx + 3) # +3 to skip column names
@@ -108,7 +107,7 @@ class FacesAndAttributes(Dataset):
 
         if self.transform:
             image_tensor = self.transform(cropped_image)
-        image_tensor = image_tensor.to(self.device)
+        #image_tensor = image_tensor.to(self.device)
 
         category_tensor = self.read_category_attribute(idx).to(self.device)
         
@@ -118,7 +117,7 @@ class FacesAndAttributes(Dataset):
 def generate_training_data_loaders(path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
     # Create the dataset
     dataset = ImageDataset(path, transform)
-
+    
     # Split the dataset into train and test sets
     train_size = int(split_ratio * len(dataset))
     test_size = len(dataset) - train_size
@@ -137,25 +136,20 @@ def generate_full_data_loader(path, num_workers=2):
     return data_loader
 
 
-def generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
+def generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path,batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
     # Create the dataset
     dataset = LatentFacesWithCategories(lat_img_path, category_attr_path)
 
-    # # Split the dataset into train and test sets
-    # train_size = int(split_ratio * len(dataset))
-    # test_size = len(dataset) - train_size
-    # train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    # Split the dataset into train and test sets
+    train_size = int(split_ratio * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    # # Create DataLoaders for training and testing with multiple workers
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
-    
-    # return train_loader, test_loader
+    # Create DataLoaders for training and testing with multiple workers
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=num_workers)
 
-    # train_loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
-    train_loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True)
-
-    return train_loader
+    return train_loader, test_loader
 
 
 def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
