@@ -12,8 +12,8 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 from VAE import VAE
-from data_loader import generate_data_loaders
-from utility import resolve_device, read_configs
+from data_loaders import generate_data_loaders
+from utils import resolve_device, read_configs
 
 
 

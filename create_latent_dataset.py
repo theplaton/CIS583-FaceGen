@@ -15,7 +15,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision import transforms
 from IPython.display import display
 from utils import read_configs, resolve_device, get_model_path_by_name, print_progress_with_time
-from data_loader import generate_full_data_loader
+from data_loaders import generate_full_data_loader
 
 
 # face_vae_model_path = 'cnn_vae_model_1.pth'

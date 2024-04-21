@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch
-from data_loader import generate_training_categoryAE_data_loaders
+import time
+from datetime import datetime
+from data_loaders import generate_training_categoryAE_data_loaders
+from utils import resolve_device, print_training_progress_with_time, read_configs
 
 
 class CategoryAutoencoder(nn.Module):
@@ -30,23 +33,41 @@ class AutoencoderLoss(nn.Module):
         return total_loss
 
 
-def train_autoencoder(model, dataloader, loss_function, optimizer, epochs):
+def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, device, model_safe_path):
+    model.to(device)
     model.train()
-    for epoch in range(epochs):
-        for data in dataloader:
-            face_vector, category_vector = data
-            optimizer.zero_grad()
-            outputs, latents = model(face_vector)
-            loss = loss_function(face_vector, outputs, latents, category_vector)
-            loss.backward()
-            optimizer.step()
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
+    data_size = len(dataloader)
+    start_time = time.time()
+    try:
+        for epoch in range(epochs):
+            for idx, data in enumerate(dataloader):
+                face_vector, category_vector = data
+                face_vector = face_vector.to(device)
+                category_vector = category_vector.to(device)
+                optimizer.zero_grad()
+                outputs, latents = model(face_vector)
+                loss = loss_function(face_vector, outputs, latents, category_vector)
+                loss.backward()
+                optimizer.step()
+                print_training_progress_with_time(idx, epoch, data_size, epochs, start_time, 100)
+            print("\n")
+            print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
+    except KeyboardInterrupt:
+        print("was interrupted!")
+    
+    now = datetime.now()
+    day = now.strftime("%d")
+    hr = now.strftime("%H")
+    min = now.strftime("%M")
+    torch.save(model, f'{model_safe_path}_{day}_{hr}-{min}')
 
 
 if __name__ == "__main__":
     
-    lat_img_path = "/Users/platonslynko/Desktop/CS583/latent_faces_data"
+    # lat_img_path = "/Users/platonslynko/Desktop/CS583/latent_faces_data"
+    lat_img_path = read_configs()['']
     category_attr_path = "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/data/list_attr_celeba.txt"
+    model_safe_path = "/Users/platonslynko/Desktop/CS583/CIS583-FaceGen/models/category_ae"
     
     autoencoder = CategoryAutoencoder()
     loss_function = AutoencoderLoss(lambda_value=0.5)
@@ -54,4 +75,4 @@ if __name__ == "__main__":
     data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, 1, num_workers=1)
     
     # Training the model
-    train_autoencoder(autoencoder, data_loader, loss_function, optimizer, epochs=20)
+    train_autoencoder(autoencoder, data_loader, loss_function, optimizer, epochs=20, device=resolve_device(), model_safe_path=model_safe_path)
