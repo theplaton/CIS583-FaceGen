@@ -8,16 +8,24 @@ from utils import resolve_device, print_training_progress_with_time, read_config
 
 
 class CategoryAutoencoder(nn.Module):
-    def __init__(self, input_dim=512, latent_dim=40):
+    def __init__(self, input_dim=512, hidden_dim=140, latent_dim=40):
         super(CategoryAutoencoder, self).__init__()
-        self.encoder = nn.Linear(input_dim, latent_dim)
-        self.decoder = nn.Linear(latent_dim, input_dim)
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_dim)
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, input_dim)
+        )
 
     def forward(self, x):
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
         return decoded, encoded
-    
+
     
 class AutoencoderLoss(nn.Module):
     def __init__(self, lambda_value=0.5):
@@ -63,16 +71,15 @@ def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, devic
 
 
 if __name__ == "__main__":
-    
-    # lat_img_path = "/Users/platonslynko/Desktop/CS583/latent_faces_data"
+
     lat_img_path = read_configs()['latent_faces_data_path_abs']
     category_attr_path = read_configs()['face_attributes_rel']
     model_save_path = "./models/category_ae"
     
     autoencoder = CategoryAutoencoder()
-    loss_function = AutoencoderLoss(lambda_value=0.5)
+    loss_function = AutoencoderLoss(lambda_value=0.1)
     optimizer = torch.optim.Adam(autoencoder.parameters(), lr=0.001)
-    train_data_loader, test_data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, batch_size = 32, num_workers=8)
+    train_data_loader, test_data_loader = generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path, split_ratio=1.0, batch_size = 32, num_workers=8)
     
     # Training the model
     train_autoencoder(autoencoder, train_data_loader, loss_function, optimizer, epochs=20, device=resolve_device(), model_save_path=model_save_path)

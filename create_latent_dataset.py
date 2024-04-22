@@ -16,10 +16,10 @@ from torchvision import transforms
 from IPython.display import display
 from utils import read_configs, resolve_device, get_model_path_by_name, print_progress_with_time
 from data_loaders import generate_full_data_loader
+import combined_model
 
 
-# face_vae_model_path = 'cnn_vae_model_1.pth'
-face_vae_model_path = 'cnn_vae_model_sumloss.pth'
+face_vae_model_path = 'combined_model_sum-loss_256-latent_0.04_0.96.pth'
 
 
 if __name__ == "__main__":
@@ -30,13 +30,13 @@ if __name__ == "__main__":
     original_dataset = read_configs()['data_path_abs']
     new_latent_faces_dataset = read_configs()['latent_faces_data_path_abs']
 
-    data_loader = generate_full_data_loader(original_dataset)
+    data_loader = generate_full_data_loader(original_dataset, num_workers=8)
     total_imgs = len(data_loader)
     start_time = time.time()
     for idx, data in enumerate(data_loader):
         data = data.to(device)
     
-        mu, logvar = model.encoder(data)
+        mu, logvar, categories = model.encoder(data)
         data_to_write = {
             'mu': mu,
             'logvar': logvar

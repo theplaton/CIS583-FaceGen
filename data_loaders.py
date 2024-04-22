@@ -66,19 +66,27 @@ class LatentFacesWithCategories(Dataset):
 
     def __getitem__(self, idx):
         loaded_data = torch.load(os.path.join(self.image_dir, self.data_files[idx]), map_location='cpu')
+        # mu, logvar = loaded_data['mu'].squeeze(0) * self.mu_scale, loaded_data['logvar'].squeeze(0)
         mu, logvar = loaded_data['mu'].squeeze(0) * self.mu_scale, loaded_data['logvar'].squeeze(0)
         data = torch.cat((mu, logvar), dim=0).detach()
         category_vector = self.read_category_attribute(idx)
+        category_vector = (category_vector + 1) // 2
         return data, category_vector
     
+    @staticmethod
+    def desqueeze(vect, mu_scale=-100):
+        mu, logvar = torch.split(vect, 256, dim=1)
+        mu = mu / mu_scale
+        return mu, logvar
+
     
 class FacesAndAttributes(Dataset):
-    def __init__(self, img_dir, category_attr_path, transform):
+    def __init__(self, img_dir, category_attr_path, transform, idx_list=None):
         self.image_dir = img_dir
         self.category_attr_file = category_attr_path
         self.image_files = sorted([f for f in os.listdir(self.image_dir) if f.endswith('.jpg')])
         self.transform = transform
-        #self.device = device
+        self.idx_list = idx_list
     
     def read_category_attribute(self, idx):
         line = linecache.getline(self.category_attr_file, idx + 3) # +3 to skip column names
@@ -86,10 +94,14 @@ class FacesAndAttributes(Dataset):
         return torch.tensor([float(x) for x in parts[1:]]) # Convert the rest of the columns to integers
 
     def __len__(self):
-        return len(self.image_files)
+        if not self.idx_list:
+            return len(self.image_files)
+        else:
+            return len(self.idx_list)
 
     def __getitem__(self, idx):
-        
+
+        idx = self.idx_list[idx - 1]
         img_path = os.path.join(self.image_dir, self.image_files[idx])
         image = Image.open(img_path).convert('RGB')
 
@@ -107,9 +119,8 @@ class FacesAndAttributes(Dataset):
 
         if self.transform:
             image_tensor = self.transform(cropped_image)
-        #image_tensor = image_tensor.to(self.device)
 
-        category_tensor = self.read_category_attribute(idx).to(self.device)
+        category_tensor = self.read_category_attribute(idx)
         
         return image_tensor, category_tensor
     
@@ -147,30 +158,31 @@ def generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path,b
 
     # Create DataLoaders for training and testing with multiple workers
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=num_workers)
-
+    if split_ratio == 1.0:
+        test_loader = None
+    else:
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,num_workers=num_workers)
     return train_loader, test_loader
 
 
-def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True):
+def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True, idx_list=None):
     # Create the dataset
-    dataset = FacesAndAttributes(imgs_dir_path, attrs_path, transform, resolve_device())
+    dataset = FacesAndAttributes(imgs_dir_path, attrs_path, transform, idx_list)
 
     # Split the dataset into train and test sets
     train_size = int(split_ratio * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    # Create DataLoaders for training and testing with multiple workers
-    train_loader = DataLoader(train_dataset, batch_size=batch_size)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size)
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+    if num_workers != 1:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True, num_workers=num_workers)    
+    else:
+        # Create DataLoaders for training and testing with multiple workers
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle)
 
     return train_loader, test_loader
 
-
-# data = data.to('cpu').pin_memory()
-
-# # Move the tensor to the target device
-# data = data.to(device, non_blocking=True)
+def generate_img_and_attrs_select_data_loader(imgs_dir_path, attrs_path, idx_list=None):
+    return generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size=1, split_ratio=1.0, num_workers=1, shuffle=False, idx_list=idx_list)[0]

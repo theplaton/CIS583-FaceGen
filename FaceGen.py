@@ -110,7 +110,7 @@ def train(model, dataloader, loss_function, optimizer, epochs, device, model_saf
                 face_vector = face_vector.to(device)
                 category_vector = category_vector.to(device)
                 optimizer.zero_grad()
-                outputs, latents = model(face_vector)
+                decoded, outputs, latents = model(face_vector)
                 loss = loss_function(face_vector, outputs, latents, category_vector)
                 loss.backward()
                 optimizer.step()
