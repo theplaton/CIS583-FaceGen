@@ -3,5 +3,6 @@
     "latent_faces_data_path_abs": "/Users/platonslynko/Desktop/CS583/latent_faces_data",
     "model_dir_rel": "models",
     "face_attributes_rel": "data/list_attr_celeba.txt",
-    "test_categories_rel": "data/test_categories.txt"   
+    "test_categories_rel": "data/test_categories.txt",
+    "generated_faces_abs": "/Users/platonslynko/Desktop/CS583/generated_faces"
 }

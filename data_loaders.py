@@ -17,6 +17,11 @@ transform = transforms.Compose([
     transforms.Lambda(divide_by_256)  # scale to 0-1 range
 ])
 
+# Define your transformation pipeline
+no_transform = transforms.Compose([
+    transforms.ToTensor()
+])
+
 
 class ImageDataset(Dataset):
     def __init__(self, root_dir, transform):
@@ -165,7 +170,7 @@ def generate_training_categoryAE_data_loaders(lat_img_path, category_attr_path,b
     return train_loader, test_loader
 
 
-def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True, idx_list=None):
+def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size, split_ratio=0.8, num_workers=8, shuffle=True, transform=transform, idx_list=None):
     # Create the dataset
     dataset = FacesAndAttributes(imgs_dir_path, attrs_path, transform, idx_list)
 
@@ -185,4 +190,4 @@ def generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batc
     return train_loader, test_loader
 
 def generate_img_and_attrs_select_data_loader(imgs_dir_path, attrs_path, idx_list=None):
-    return generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size=1, split_ratio=1.0, num_workers=1, shuffle=False, idx_list=idx_list)[0]
+    return generate_training_img_and_attrs_data_loaders(imgs_dir_path, attrs_path, batch_size=1, split_ratio=1.0, num_workers=1, shuffle=False, transform=no_transform, idx_list=idx_list)[0]

@@ -23,49 +23,15 @@ from matplotlib import pyplot as plt
 
 to_image = transforms.ToPILImage()
 
-def test_category_ae():
-    # face_vae_model_name = 'cnn_vae_model_sumloss.pth'
-    attr_ae_model_name = 'category_ae_21_14-34'
-    device = resolve_device()
-    # face_vae_model = torch.load(get_model_path_by_name(face_vae_model_name), map_location=device)
-    # face_vae_model.eval()
-    attr_ae_model = torch.load(get_model_path_by_name(attr_ae_model_name), map_location=device)
-    attr_ae_model.eval()
-
-    lat_img_dataset = resolve_config('latent_faces_data_path_abs')
-    attr_dataset = resolve_config('face_attributes_rel')
-    
-
-    train_loader, test_loader = generate_training_categoryAE_data_loaders(lat_img_dataset, attr_dataset, 1, num_workers=4, shuffle=False)
-    test_imgs_len = len(test_loader)
-    start_time = time.time()
-
-    all_val_attr = []
-    all_val_pred_attr = []
-
-    for idx, data in enumerate(test_loader):
-        lat_face, attrs_vector = data
-        lat_face = lat_face.to(device)
-        attrs_vector = attrs_vector.to(device)
-        all_val_attr.append(attrs_vector)
-    
-        gen_attrs_vector = attr_ae_model.encoder(lat_face)
-        predictions = (gen_attrs_vector >= 0).float()
-        all_val_pred_attr.append(predictions)
-        
-        print_progress_with_time(idx, test_imgs_len, start_time, 100)
-
-    all_val_attr = torch.cat(all_val_attr).cpu().numpy()
-    all_val_pred_attr = torch.cat(all_val_pred_attr).cpu().numpy()
-    val_hamming_loss = hamming_loss(all_val_attr, all_val_pred_attr)
-    
-    print(" --- TOTAL LOSS: " + str(val_hamming_loss) + " ---")
-    
-
 def generate_faces_from_categories():
     face_vae_model_name = 'combined_model_sum-loss_256-latent_0.04_0.96.pth'
-    # face_vae_model_name = 'combined_model_sumloss.pth'
-    attr_ae_model_name = 'category_ae_21_14-34'
+    
+    # attr_ae_model_name = 'category_ae_22_16-41'
+    # attr_ae_model_name = 'category_ae_22_15-55'
+    # attr_ae_model_name = 'category_ae_22_00-42'
+    # attr_ae_model_name = 'category_ae_21_14-34'
+    attr_ae_model_name = 'category_ae_20_22-57'
+    
     device = resolve_device()
     face_vae_model = torch.load(get_model_path_by_name(face_vae_model_name), map_location=device)
     face_vae_model.eval()
@@ -75,7 +41,7 @@ def generate_faces_from_categories():
     lat_img_dataset = resolve_config('latent_faces_data_path_abs')
     img_dataset = resolve_config('data_path_abs')
     attr_dataset = resolve_config('face_attributes_rel')
-    # test_attr = resolve_config('test_categories_rel')
+    generated_faces_path = resolve_config('generated_faces_abs')
 
     idx_list = [878, 879, 880]
     
@@ -83,12 +49,8 @@ def generate_faces_from_categories():
     imgs_len = len(data_loader)
     start_time = time.time()
 
-    # all_val_attr = []
-    # all_val_pred_attr = []
-
     for idx, data in enumerate(data_loader):
-        img, attrs_vector = data
-        img = img.to(device)
+        orig_img, attrs_vector = data
         attrs_vector = attrs_vector.to(device)
         
         gen_lat_faces_vector = attr_ae_model.decoder(attrs_vector)
@@ -97,24 +59,31 @@ def generate_faces_from_categories():
 
         z = face_vae_model.reparameterize(mu, logvar)
         generated_face = face_vae_model.decoder(z)[0]
-        img = to_image(generated_face.to('cpu'))
+        # img = to_image(generated_face.to('cpu'))
+        img = generated_face.to('cpu')
         
-        # display(img)
-        plt.imshow(img)
+        img = img.detach().permute(1, 2, 0).numpy()
+        orig_img = orig_img[0].permute(1, 2, 0)
+        
+        fig, ax = plt.subplots()
+        
+        ax.imshow(orig_img, extent=[-200, 0, -100, 100])
+        ax.imshow(img, extent=[0, 200, -100, 100])
+        # plt.imshow(img)
+        ax.set_xlim([-200, 200])
+        ax.set_ylim([-100, 100])
+        ax.set_xticks([])
+        ax.set_yticks([])
         plt.axis('off')  # Turn off axis numbers
-        plt.show()
-        
-        pass
-        # print_progress_with_time(idx, imgs_len, start_time, 100)
+        filename = os.path.join(generated_faces_path, f'{idx+1:06}.png')
+        plt.savefig(filename, bbox_inches='tight')
+        # plt.show()
 
-    # all_val_attr = torch.cat(all_val_attr).cpu().numpy()
-    # all_val_pred_attr = torch.cat(all_val_pred_attr).cpu().numpy()
-    # val_hamming_loss = hamming_loss(all_val_attr, all_val_pred_attr)
-    
-    # print(" --- TOTAL LOSS: " + str(val_hamming_loss) + " ---")
+        print_progress_with_time(idx, imgs_len, start_time, 100)
+
+
 
 
 if __name__ == "__main__":
     
-    # test_category_ae()
     generate_faces_from_categories()
