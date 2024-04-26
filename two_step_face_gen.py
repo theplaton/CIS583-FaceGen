@@ -21,6 +21,7 @@ import combined_model
 from IPython.display import display
 from matplotlib import pyplot as plt
 
+
 to_image = transforms.ToPILImage()
 
 def generate_faces_from_categories():
@@ -43,7 +44,7 @@ def generate_faces_from_categories():
     attr_dataset = resolve_config('face_attributes_rel')
     generated_faces_path = resolve_config('generated_faces_abs')
 
-    idx_list = [878, 879, 880]
+    idx_list = [73300 + i for i in range(5)]
     
     data_loader = generate_img_and_attrs_select_data_loader(img_dataset, attr_dataset, idx_list=idx_list)
     imgs_len = len(data_loader)

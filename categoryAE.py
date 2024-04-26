@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from data_loaders import generate_training_categoryAE_data_loaders
 from utils import resolve_device, print_training_progress_with_time, read_configs
+from torchsummary import summary
 
 
 class CategoryAutoencoder(nn.Module):
@@ -44,6 +45,7 @@ class AutoencoderLoss(nn.Module):
 def train_autoencoder(model, dataloader, loss_function, optimizer, epochs, device, model_save_path):
     model.to(device)
     model.train()
+    
     data_size = len(dataloader)
     start_time = time.time()
     try:
